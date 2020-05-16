@@ -18,8 +18,8 @@ class ViewController: UIViewController {
     var videos = [URL]()
     var count=0
     
-    var Repeat = false
-    
+    var Mode = "Continue"
+
     private lazy var layer : AVPlayerLayer = {
         let playeritem = AVPlayerItem(url: videos[count])
         self.player = AVPlayer()
@@ -28,18 +28,27 @@ class ViewController: UIViewController {
         let duration = playeritem.asset.duration
         let seconds = CMTimeGetSeconds(duration)
         progress.text = formatConversion(time: 0)
-        
+        self.volume.text = volumeFormat(v: Float64(1))
+
         
         player.addPeriodicTimeObserver(forInterval: CMTimeMake(value: 1, timescale: 1), queue: DispatchQueue.main, using: {(CMTime) in let currentTime = CMTimeGetSeconds(self.player.currentTime())
             self.progressSlider.minimumValue = 0
             self.progressSlider.maximumValue = Float(CMTimeGetSeconds((self.player.currentItem?.asset.duration)!))
             self.progressSlider.value = Float(currentTime)
+            self.volumeSlider.value = self.player.volume
+            self.volume.text = self.volumeFormat(v: Float64(self.player.volume))
             self.progress.text = self.formatConversion(time: currentTime)
         })
         
         
         return layer
     }()
+    
+    func volumeFormat(v: Float64) -> String{
+        var Volume = v * 100
+        return String(format: "%.2f", Volume) + "%"
+        
+    }
     
     func formatConversion(time: Float64) -> String{
         let songLength = Int(time)
@@ -106,10 +115,18 @@ class ViewController: UIViewController {
     }
     @IBOutlet weak var nextButton: UIButton!
     @IBAction func next(_ sender: UIButton) {
-        if count == videos.count-1{
-            count=0
+        if Mode == "random"{
+            var number = count
+            while number == count{
+                number = Int.random(in: 0..<3)
+            }
+            count = number
         }else{
-            count=count+1
+            if count == videos.count-1{
+                count=0
+            }else{
+                count=count+1
+            }
         }
         if playing == false{
             playBotton.setImage(UIImage(named: "play.png"), for: .normal)
@@ -122,6 +139,7 @@ class ViewController: UIViewController {
             player.replaceCurrentItem(with: playeritem)
             playVideo(playBotton)
         }
+        
     }
     
     @IBOutlet weak var progressSlider: UISlider!
@@ -132,6 +150,8 @@ class ViewController: UIViewController {
         player.seek(to: targetTime)
     }
     
+    @IBOutlet weak var volume: UILabel!
+    @IBOutlet weak var volumeSlider: UISlider!
     @IBAction func volumnSlider(_ sender: UISlider) {
         player.volume = sender.value
     }
@@ -166,13 +186,23 @@ class ViewController: UIViewController {
     
     @objc func playerItemDidReachEnd(notification: Notification){
         if let playerItem = notification.object as? AVPlayerItem {
-            if Repeat == true{
+            if Mode == "loop"{
                 playerItem.seek(to: CMTime.zero)
                 playVideo(playBotton)
                 playVideo(playBotton)
-            }else{
+            }else if Mode == "Continue"{
                 playVideo(playBotton)
                 next(nextButton)
+                playVideo(playBotton)
+            }else{
+                var number = count
+                while number == count{
+                    number = Int.random(in: 0..<3)
+                }
+                count = number
+                playVideo(playBotton)
+                let playeritem = AVPlayerItem(url: videos[count])
+                self.player.replaceCurrentItem(with: playeritem)
                 playVideo(playBotton)
             }
         }
@@ -180,12 +210,16 @@ class ViewController: UIViewController {
 
     
     @IBAction func `continue`(_ sender: UIButton) {
-        Repeat = false
+        Mode = "Continue"
         mode.text = "循序播放 mode"
     }
     @IBAction func loop(_ sender: UIButton) {
-        Repeat = true
+        Mode = "loop"
         mode.text = "循環播放 mode"
+    }
+    @IBAction func random(_ sender: UIButton) {
+        Mode = "random"
+        mode.text="隨機播放 mode"
     }
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
